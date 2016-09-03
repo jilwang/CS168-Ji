@@ -1,21 +1,12 @@
 import socket
 import sys
 
-class BasicClient(object):
+ip_addr = sys.argv[1]
+port = sys.argv[2]
 
-    def __init__(self, address, port):
-        self.address = address
-        self.port = int(port)
-        self.socket = socket.socket()
+client_sock = socket.socket()
+client_sock.connect((ip_addr, int(port)))
 
-    def send(self, message):
-        self.socket.connect((self.address, self.port))
-        self.socket.send(message)
-
-args = sys.argv
-if len(args) != 3:
-    print "Please supply a server address and port."
-    sys.exit()
-client = BasicClient(args[1], args[2])
-msg = raw_input()
-client.send(msg)
+print "Say something:"
+data = raw_input()
+client_sock.send(data)
