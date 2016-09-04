@@ -96,6 +96,7 @@ class Server:
         if channel not in self.channels:
             error_msg = utils.SERVER_NO_CHANNEL_EXISTS.format(channel)
             sock.sendall(helper.pad_msg(error_msg))
+            return
 
         client_socket = self.client_sockets[sock]
         name = client_socket.name
@@ -115,6 +116,7 @@ class Server:
         if channel in self.channels:
             error_msg = utils.SERVER_CHANNEL_EXISTS.format(channel)
             sock.sendall(helper.pad_msg(error_msg))
+            return
 
         self.channels[channel] = []
         self.join_control(sock, channel)

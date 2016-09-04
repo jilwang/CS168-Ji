@@ -48,7 +48,14 @@ def main():
     port = int(sys.argv[3])
 
     client_socket = socket.socket()
-    client_socket.connect((addr, port))
+
+    try:
+        client_socket.connect((addr, port))
+    except socket.error as err:
+        error_msg = utils.CLIENT_CANNOT_CONNECT.format(addr, port)
+        helper.print_stdout(error_msg)
+        sys.exit()
+
     client = Client(client_socket)
 
     # new special message that creates the name for the client
@@ -82,9 +89,10 @@ def main():
                     output_sock.sendall(data)
                 else:
                     data = data.rstrip()
+                    server_msg = utils.CLIENT_WIPE_ME + '\r' + data
+                    helper.print_stdout(server_msg)
                     if data:
-                        server_msg = utils.CLIENT_WIPE_ME + '\r' + data
-                        helper.print_stdout(server_msg + '\n')
+                        helper.print_stdout('\n')
                 helper.print_stdout(utils.CLIENT_MESSAGE_PREFIX)
 
 main()
