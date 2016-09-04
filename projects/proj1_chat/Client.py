@@ -90,7 +90,13 @@ def main():
             assert output_sock
 
             data = client.parse_input(input_sock)
-            client.buffer_output_date(data, output_sock)
+            if not data:
+                assert output_sock is sys.stdin
+                error_msg = utils.CLIENT_SERVER_DISCONNECTED.format(addr, port)
+                sys.stdout.write(error_msg)
+                sys.exit()
+
+            client.buffer_output_data(data, output_sock)
 
         # send buffered data to available sockets
         input_ready, output_ready, error = \
