@@ -13,31 +13,32 @@ class Client:
     def parse_input(self, input_sock):
         custom_socket = self.sockets[input_sock]
         recv_buffer = custom_socket.recv_buffer
-        recv_bytes = input_sock.recv_into(recv_buffer, utils.MESSAGE_LENGTH)
 
-        if recv_bytes == 0:
-            return None
+        if input_sock is sys.stdin:
+            recv_bytes = raw_input()
+            data = utils.CLIENT_MESSAGE_PREFIX + \
+                   recv_buffer[:(utils.MESSAGE_LENGTH -
+                                 len(utils.CLIENT_MESSAGE_PREFIX))]
+
+            # padding the message
+            if len(data) < utils.MESSAGE_LENGTH:
+                data += ' ' * (utils.MESSAGE_LENGTH - len(data))
+
+            return data
 
         else:
+            try:
+                recv_bytes = input_sock.recv_into(recv_buffer,
+                                                  utils.MESSAGE_LENGTH)
+            except ValueError as err:
+                return None
 
-            if input_sock is sys.stdin:
-                data = utils.CLIENT_MESSAGE_PREFIX + \
-                       recv_buffer[:(utils.MESSAGE_LENGTH -
-                                     len(utils.CLIENT_MESSAGE_PREFIX))]
+            if len(recv_buffer) < utils.MESSAGE_LENGTH:
+                return None
 
-                # padding the message
-                if len(data) < utils.MESSAGE_LENGTH:
-                    data += ' ' * (utils.MESSAGE_LENGTH - len(data))
-
-                return data
-
-            else:
-                if len(recv_buffer) < utils.MESSAGE_LENGTH:
-                    return None
-
-                data = recv_buffer[:utils.MESSAGE_LENGTH]
-                recv_buffer = recv_buffer[utils.MESSAGE_LENGTH:]
-                return data
+            data = recv_buffer[:utils.MESSAGE_LENGTH]
+            recv_buffer = recv_buffer[utils.MESSAGE_LENGTH:]
+            return data
 
     def send_data(self, output_sock):
         send_buffer = self.sockets[output_sock].send_buffer
@@ -50,7 +51,7 @@ class Client:
         if output_sock is sys.stdin:
             output_sock.send(data)
         else:
-            sys.stdout.send(data.rstrip())
+            sys.stdout.write(data.rstrip())
 
     def buffer_output_data(self, data, output_sock):
         send_buffer = self.sockets[output_sock].send_buffer
@@ -58,22 +59,19 @@ class Client:
 
 
 def main():
-    if len(sys.argv) < 5:
-        raise "Insufficient number of client arguments. Need 5."
+    if len(sys.argv) < 4:
+        raise BaseException("Insufficient number of client arguments. Need 5.")
 
-    name = sys.argv[2]
-    addr = sys.argv[3]
-    port = int(sys.argv[4])
+    name = sys.argv[1]
+    addr = sys.argv[2]
+    port = int(sys.argv[3])
 
     client_socket = socket.socket()
     client_socket.connect((addr, port))
     client = Client(client_socket)
 
     # new special message that creates the name for the client
-    name_msg = "/name " + name
-    if len(name_msg) < utils.MESSAGE_LENGTH:
-        name_msg += ' ' * (utils.MESSAGE_LENGTH - len(name_msg))
-    client_socket.send(name_msg)  # make it a blocking call
+    client_socket.send(name)  # make it a blocking call
 
     interfaces = [client_socket, sys.stdin]
     while True:
@@ -84,7 +82,7 @@ def main():
 
         for input_sock in input_ready:
             output_sock = None
-            for (sock, custom) in client.sockets:
+            for sock in client.sockets:
                 if sock is not input_sock:
                     output_sock = sock
             assert output_sock

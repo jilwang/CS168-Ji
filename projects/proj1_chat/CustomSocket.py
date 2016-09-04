@@ -10,6 +10,6 @@ class CustomSocket:
 
 class CustomSocketAdv(CustomSocket):
     def __init__(self, sock):
-        super(self).__init__(sock)
+        CustomSocket.__init__(self, sock)
         self.channel = ""
         self.name = ""

@@ -9,45 +9,63 @@ class Server:
     def __init__(self, sock):
         self.channels = {}
         self.server_socket = CustomSocket.CustomSocket(sock)
-        self.client_socket = []
+        self.client_sockets = {}
 
-    def parse(self, data, client_socket):
+    def read_input(self, data, input_socket):
+        pass
+
+    def send_output(self, output_socket):
+        pass
+
+    def buffer_output_data(self, data, output_socket):
         pass
 
 
-if len(sys.argv) < 2:
-    raise "Insufficient server arguments."
+def main():
+    if len(sys.argv) < 2:
+        raise BaseException("Insufficient server arguments.")
 
-server_socket = socket.socket()
-port = sys.argv[1] 
-server_socket.bind(('localhost', int(port)))
-server_socket.listen(5)
+    server_socket = socket.socket()
+    port = sys.argv[1]
+    server_socket.bind(('localhost', int(port)))
+    server_socket.listen(5)
 
-server = Server(server_socket)
+    server = Server(server_socket)
 
-while True:
-    listen_set = server.client_socket[:]
-    listen_set.append(server.server_socket)
+    while True:
+        listen_set = [sock for sock in server.client_sockets]
+        listen_set.append(server_socket)
 
-    readable, writable, error = \
-        select.select(listen_set, [], [])
+        readable, writable, error = \
+            select.select(listen_set, [], [])
 
-    if server.server_socket in readable:
+        for sock in readable:
+            if sock is server_socket:
+                (new_client_socket, addr) = sock.accept()
+                new_client_custom_socket = CustomSocket.\
+                    CustomSocketAdv(new_client_socket)
 
-    for sock in readable:
-        if sock.socket is server.server_socket:
-            (new_client, addr) = server.server_socket.accept()
-            server.client_socket.append(CustomSocket.CustomSocketAdv(new_client))
+                # blocking call for the name of the client
+                client_name = new_client_socket.recv(utils.MESSAGE_LENGTH)
+                new_client_custom_socket.name = client_name
+                server.client_sockets[new_client_socket] = \
+                    new_client_custom_socket
+                print len(server.client_sockets)
+                print client_name
+                print "Done"
 
-        else:
-            client_socket = sock.socket
-            recv_bytes = client_socket.recv_into(sock.recv_buffer, utils.MESSAGE_LENGTH)
-            if recv_bytes == 0:
-                pass
-            elif len(sock.recv_buffer) < utils.MESSAGE_LENGTH:
-                pass
             else:
-                data = sock.recv_buffer[:utils.MESSAGE_LENGTH]
-                recv_buffer = sock.recv_buffer[200:]
-                server.parse(data, sock)
-            
+                pass
+                # client_socket = server.client_sockets[sock]
+                # recv_bytes = sock.recv_into(client_socket.recv_buffer,
+                #                             utils.MESSAGE_LENGTH)
+                # if recv_bytes == 0:
+                #     pass
+                # elif len(client_socket.recv_buffer) < utils.MESSAGE_LENGTH:
+                #     pass
+                # else:
+                #     data = sock.recv_buffer[:utils.MESSAGE_LENGTH]
+                #     recv_buffer = client_socket.recv_buffer[200:]
+                #     server.parse(data, sock)
+
+main()
