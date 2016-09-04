@@ -21,7 +21,7 @@ class Server:
             return None
         else:
             data = client_buffer[:utils.MESSAGE_LENGTH]
-            client_buffer = client_buffer[utils.MESSAGE_LENGTH:]
+            del client_buffer[:utils.MESSAGE_LENGTH]
             return data
 
     def dispatch(self, data, sock):
@@ -91,6 +91,7 @@ class Server:
             self.broadcast(CustomSocket.pad_msg(leave_msg), old_channel)
 
         self.channels[channel].append(sock)
+        client_socket.channel = channel
         join_msg = utils.SERVER_CLIENT_JOINED_CHANNEL.format(name)
         self.broadcast(CustomSocket.pad_msg(join_msg), channel)
 

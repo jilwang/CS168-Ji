@@ -16,10 +16,11 @@ class Client:
 
         if input_sock is sys.stdin:
             recv_bytes = raw_input()
+            if len(recv_bytes) < utils.MESSAGE_LENGTH:
+                recv_bytes += ' ' * (utils.MESSAGE_LENGTH - len(recv_bytes))
             recv_buffer += recv_bytes
-            data = recv_buffer[:(utils.MESSAGE_LENGTH -
-                                 len(utils.CLIENT_MESSAGE_PREFIX))]
-
+            data = recv_buffer[:utils.MESSAGE_LENGTH]
+            del recv_buffer[:utils.MESSAGE_LENGTH]
             return data
 
         else:
@@ -30,7 +31,7 @@ class Client:
                 return None
 
             data = recv_buffer[:utils.MESSAGE_LENGTH]
-            recv_buffer = recv_buffer[utils.MESSAGE_LENGTH:]
+            del recv_buffer[:utils.MESSAGE_LENGTH]
             return data
 
 
@@ -73,9 +74,8 @@ def main():
 
             if data:
                 if input_sock is sys.stdin:
-                    data = CustomSocket.pad_msg(data)
                     output_sock.sendall(data)
                 else:
-                    sys.stdout.write(data.rstrip())
+                    sys.stdout.write('\n' + data.rstrip())
 
 main()
