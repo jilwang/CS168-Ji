@@ -147,10 +147,18 @@ def main():
                     CustomSocketAdv(new_client_socket)
 
                 # blocking call for the name of the client
-                client_name = new_client_socket.recv(utils.MESSAGE_LENGTH)
-                new_client_custom_socket.name = client_name
-                server.client_sockets[new_client_socket] = \
-                    new_client_custom_socket
+                while True:
+                    recv_bytes = new_client_socket.recv(utils.MESSAGE_LENGTH)
+                    new_client_custom_socket.recv_buffer += recv_bytes
+
+                    if len(new_client_custom_socket.recv_buffer) \
+                            >= utils.MESSAGE_LENGTH:
+                        new_client_custom_socket.name = \
+                            new_client_custom_socket.recv_buffer[:utils.MESSAGE_LENGTH].rstrip()
+                        del new_client_custom_socket.recv_buffer[:utils.MESSAGE_LENGTH]
+                        server.client_sockets[new_client_socket] = \
+                            new_client_custom_socket
+                        break
 
             else:
                 try:

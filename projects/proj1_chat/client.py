@@ -59,7 +59,7 @@ def main():
     client = Client(client_socket)
 
     # new special message that creates the name for the client
-    client_socket.send(name)  # make it a blocking call
+    client_socket.send(helper.pad_msg(name))  # make it a blocking call
 
     interfaces = [client_socket, sys.stdin]
     helper.print_stdout(utils.CLIENT_MESSAGE_PREFIX)
