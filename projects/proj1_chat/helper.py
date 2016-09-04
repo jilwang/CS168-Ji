@@ -1,5 +1,6 @@
 import socket
 import utils
+import sys
 
 
 class CustomSocket:
@@ -19,3 +20,8 @@ def pad_msg(msg):
     if len(msg) < utils.MESSAGE_LENGTH:
         msg += ' ' * (utils.MESSAGE_LENGTH - len(msg))
     return msg
+
+
+def print_stdout(msg):
+    sys.stdout.write(msg)
+    sys.stdout.flush()

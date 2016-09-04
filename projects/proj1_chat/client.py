@@ -2,13 +2,13 @@ import utils
 import socket
 import select
 import sys
-import CustomSocket
+import helper
 
 
 class Client:
     def __init__(self, sock):
-        self.sockets = {sys.stdin: CustomSocket.CustomSocket(sys.stdin),
-                        sock: CustomSocket.CustomSocket(sock)}
+        self.sockets = {sys.stdin: helper.CustomSocket(sys.stdin),
+                        sock: helper.CustomSocket(sock)}
 
     def parse_input(self, input_sock):
         custom_socket = self.sockets[input_sock]
@@ -25,6 +25,10 @@ class Client:
 
         else:
             recv_bytes = input_sock.recv(utils.MESSAGE_LENGTH)
+
+            if len(recv_bytes) == 0:
+                raise ValueError("Server disconnected.")
+
             recv_buffer += recv_bytes
 
             if len(recv_buffer) < utils.MESSAGE_LENGTH:
@@ -51,6 +55,7 @@ def main():
     client_socket.send(name)  # make it a blocking call
 
     interfaces = [client_socket, sys.stdin]
+    helper.print_stdout(utils.CLIENT_MESSAGE_PREFIX)
     while True:
 
         # read data into buffer from available sockets
@@ -69,13 +74,17 @@ def main():
             except ValueError as err:
                 assert input_sock is not sys.stdin
                 error_msg = utils.CLIENT_SERVER_DISCONNECTED.format(addr, port)
-                sys.stdout.write(error_msg)
+                helper.print_stdout(error_msg)
                 sys.exit()
 
             if data:
                 if input_sock is sys.stdin:
                     output_sock.sendall(data)
                 else:
-                    sys.stdout.write('\n' + data.rstrip())
+                    data = data.rstrip()
+                    if data:
+                        server_msg = utils.CLIENT_WIPE_ME + '\r' + data
+                        helper.print_stdout(server_msg + '\n')
+                helper.print_stdout(utils.CLIENT_MESSAGE_PREFIX)
 
 main()

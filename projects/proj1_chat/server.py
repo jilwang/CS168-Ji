@@ -3,18 +3,29 @@ import select
 import socket
 import sys
 import string
-import CustomSocket
+import helper
 
 
 class Server:
     def __init__(self, sock):
         self.channels = {}
-        self.server_socket = CustomSocket.CustomSocket(sock)
+        self.server_socket = helper.CustomSocket(sock)
         self.client_sockets = {}
 
     def read_input(self, input_socket):
         client_buffer = self.client_sockets[input_socket].recv_buffer
         recv_bytes = input_socket.recv(utils.MESSAGE_LENGTH)
+
+        if len(recv_bytes) == 0:
+            name = self.client_sockets[input_socket].name
+            channel = self.client_sockets[input_socket].channel
+
+            self.client_sockets.pop(input_socket, None)
+            if channel in self.channels:
+                self.channels[channel].remove(input_socket)
+                leave_msg = utils.SERVER_CLIENT_LEFT_CHANNEL.format(name)
+                self.broadcast(helper.pad_msg(leave_msg), channel, input_socket)
+
         client_buffer += recv_bytes
 
         if len(client_buffer) < utils.MESSAGE_LENGTH:
@@ -34,11 +45,13 @@ class Server:
 
     def chat(self, data, sock):
         channel = self.client_sockets[sock].channel
+        name = '[' + self.client_sockets[sock].name + '] '
+        data = name + data
         if channel:
-            self.broadcast(data, channel)
+            self.broadcast(data, channel, sock)
         else:
             error_msg = utils.SERVER_CLIENT_NOT_IN_CHANNEL
-            sock.sendall(CustomSocket.pad_msg(error_msg))
+            sock.sendall(helper.pad_msg(error_msg))
 
     def control(self, data, sock):
         segments = data.split()
@@ -51,35 +64,38 @@ class Server:
                 self.join_control(sock, segments[1])
             else:
                 error_msg = utils.SERVER_JOIN_REQUIRES_ARGUMENT
-                sock.sendall(CustomSocket.pad_msg(error_msg))
+                sock.sendall(helper.pad_msg(error_msg))
 
         elif segments[0] == '/create':
             if len(segments) >= 2:
                 self.create_control(sock, segments[1])
             else:
                 error_msg = utils.SERVER_CREATE_REQUIRES_ARGUMENT
-                sock.sendall(CustomSocket.pad_msg(error_msg))
+                sock.sendall(helper.pad_msg(error_msg))
 
         else:
             error_msg = utils.SERVER_INVALID_CONTROL_MESSAGE \
                 .format(data)
-            sock.sendall(CustomSocket.pad_msg(error_msg))
+            sock.sendall(helper.pad_msg(error_msg))
 
-    def broadcast(self, data, channel):
-        assert channel in self.channels
+    def broadcast(self, data, channel, sock):
+        if not channel or channel not in self.channels:
+            return
+
         output_sockets = self.channels[channel]
         for output_socket in output_sockets:
-            output_socket.sendall(data)
+            if sock != output_socket:
+                output_socket.sendall(helper.pad_msg(data))
 
     def list_control(self, sock):
         channel_list = [channel for channel in self.channels]
         list_msg = string.join(channel_list, '\n')
-        sock.sendall(CustomSocket.pad_msg(list_msg))
+        sock.sendall(helper.pad_msg(list_msg))
 
     def join_control(self, sock, channel):
         if channel not in self.channels:
             error_msg = utils.SERVER_NO_CHANNEL_EXISTS.format(channel)
-            sock.sendall(CustomSocket.pad_msg(error_msg))
+            sock.sendall(helper.pad_msg(error_msg))
 
         client_socket = self.client_sockets[sock]
         name = client_socket.name
@@ -88,17 +104,17 @@ class Server:
         if old_channel:
             self.channels[old_channel].remove(sock)
             leave_msg = utils.SERVER_CLIENT_LEFT_CHANNEL.format(name)
-            self.broadcast(CustomSocket.pad_msg(leave_msg), old_channel)
+            self.broadcast(helper.pad_msg(leave_msg), old_channel, sock)
 
+        join_msg = utils.SERVER_CLIENT_JOINED_CHANNEL.format(name)
+        self.broadcast(helper.pad_msg(join_msg), channel, sock)
         self.channels[channel].append(sock)
         client_socket.channel = channel
-        join_msg = utils.SERVER_CLIENT_JOINED_CHANNEL.format(name)
-        self.broadcast(CustomSocket.pad_msg(join_msg), channel)
 
     def create_control(self, sock, channel):
         if channel in self.channels:
             error_msg = utils.SERVER_CHANNEL_EXISTS.format(channel)
-            sock.sendall(CustomSocket.pad_msg(error_msg))
+            sock.sendall(helper.pad_msg(error_msg))
 
         self.channels[channel] = []
         self.join_control(sock, channel)
@@ -125,7 +141,7 @@ def main():
         for sock in readable:
             if sock is server_socket:
                 (new_client_socket, addr) = sock.accept()
-                new_client_custom_socket = CustomSocket.\
+                new_client_custom_socket = helper.\
                     CustomSocketAdv(new_client_socket)
 
                 # blocking call for the name of the client
@@ -136,18 +152,19 @@ def main():
 
             else:
                 try:
-                    data = str(server.read_input(sock))
+                    data = server.read_input(sock)
 
                 except ValueError as err:
                     name = server.client_sockets[sock].name
                     channel = server.client_sockets[sock].channel
                     server.client_sockets.pop(sock, None)
                     left_msg = utils.SERVER_CLIENT_LEFT_CHANNEL.format(name)
-                    server.broadcast(CustomSocket.pad_msg(left_msg), channel)
+                    server.broadcast(helper.pad_msg(left_msg), channel, sock)
                     continue
 
-                data = data.rstrip()
-                server.dispatch(data, sock)
+                if data:
+                    data = str(data).rstrip()
+                    server.dispatch(data, sock)
 
 
 main()
