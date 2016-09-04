@@ -2,24 +2,20 @@ import utils
 import select
 import socket
 import sys
+import CustomSocket
 
-
-class Custom_Socket:
-    def __init__(self, sock):
-        self.socket = sock
-        self.name = ""
-        self.recv_buffer = bytearray()
-        self.send_buffer = bytearray()
-        self.channel = ""
 
 class Server:
     def __init__(self, sock):
         self.channels = {}
-        self.server_socket = Custom_Socket(sock)
+        self.server_socket = CustomSocket.CustomSocket(sock)
         self.client_socket = []
 
+    def parse(self, data, client_socket):
+        pass
 
-if (len(sys.argv) < 2)
+
+if len(sys.argv) < 2:
     raise "Insufficient server arguments."
 
 server_socket = socket.socket()
@@ -41,17 +37,17 @@ while True:
     for sock in readable:
         if sock.socket is server.server_socket:
             (new_client, addr) = server.server_socket.accept()
-            server.client_socket.append(Custom_Socket(new_client))
+            server.client_socket.append(CustomSocket.CustomSocketAdv(new_client))
 
         else:
             client_socket = sock.socket
             recv_bytes = client_socket.recv_into(sock.recv_buffer, utils.MESSAGE_LENGTH)
             if recv_bytes == 0:
                 pass
-            else if len(sock.recv_buffer) < utils.MESSAGE_LENGTH:
+            elif len(sock.recv_buffer) < utils.MESSAGE_LENGTH:
                 pass
-            else
-                data = recv_buffer[:utils.MESSAGE_LENGTH]
-                recv_buffer = recv_buffer[200:]
+            else:
+                data = sock.recv_buffer[:utils.MESSAGE_LENGTH]
+                recv_buffer = sock.recv_buffer[200:]
                 server.parse(data, sock)
             
