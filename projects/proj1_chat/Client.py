@@ -16,7 +16,7 @@ class Client:
         recv_bytes = input_sock.recv_into(recv_buffer, utils.MESSAGE_LENGTH)
 
         if recv_bytes == 0:
-            pass
+            return None
 
         else:
 
@@ -39,9 +39,22 @@ class Client:
                 recv_buffer = recv_buffer[utils.MESSAGE_LENGTH:]
                 return data
 
+    def send_data(self, output_sock):
+        send_buffer = self.sockets[output_sock].send_buffer
+        if len(send_buffer) < utils.MESSAGE_LENGTH:
+            return None
 
-    def send_data(self, data, output_sock):
-        pass
+        data = str(send_buffer[:utils.MESSAGE_LENGTH])
+        send_buffer = send_buffer[utils.MESSAGE_LENGTH:]
+
+        if output_sock is sys.stdin:
+            output_sock.send(data)
+        else:
+            sys.stdout.send(data.rstrip())
+
+    def buffer_output_data(self, data, output_sock):
+        send_buffer = self.sockets[output_sock].send_buffer
+        send_buffer += data
 
 
 def main():
@@ -56,10 +69,18 @@ def main():
     client_socket.connect((addr, port))
     client = Client(client_socket)
 
-    input_socks = [client_socket, sys.stdin]
+    # new special message that creates the name for the client
+    name_msg = "/name " + name
+    if len(name_msg) < utils.MESSAGE_LENGTH:
+        name_msg += ' ' * (utils.MESSAGE_LENGTH - len(name_msg))
+    client_socket.send(name_msg)  # make it a blocking call
+
+    interfaces = [client_socket, sys.stdin]
     while True:
+
+        # read data into buffer from available sockets
         input_ready, output_ready, error = \
-            select.select(input_socks, [], [])
+            select.select(interfaces, [], [])
 
         for input_sock in input_ready:
             output_sock = None
@@ -69,9 +90,14 @@ def main():
             assert output_sock
 
             data = client.parse_input(input_sock)
+            client.buffer_output_date(data, output_sock)
 
-            # only send the data if it is valid
-            if data:
-                client.send_data(data, output_sock)
+        # send buffered data to available sockets
+        input_ready, output_ready, error = \
+            select.select([], interfaces, [])
+        
+        for output_sock in output_ready:
+            client.send_data(output_sock)
+
 
 main()
